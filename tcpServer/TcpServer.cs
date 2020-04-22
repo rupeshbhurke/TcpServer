@@ -21,7 +21,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-namespace tcpServer
+namespace TcpServer
 {
     public delegate void TcpServerConnectionChanged(TcpServerConnection connection);
     public delegate void TcpServerError(TcpServer server, Exception e);
@@ -83,7 +83,7 @@ namespace tcpServer
             _mIdleTime = 50;
             _mMaxCallbackThreads = 100;
             _mVerifyConnectionInterval = 100;
-            _mEncoding = Encoding.ASCII;
+            _mEncoding = Encoding.UTF8;
 
             _sem = new SemaphoreSlim(0);
             _waiting = false;
@@ -118,7 +118,8 @@ namespace tcpServer
                 if (_listener == null)
                 {
                     //this should only be called the first time.
-                    _listener = new TcpListener(IPAddress.Any, _mPort);
+                    //_listener = new TcpListener(IPAddress.Any, _mPort);
+                    _listener = MakeListener();
                 }
                 else
                 {
@@ -315,9 +316,9 @@ namespace tcpServer
                         }
 
                         if (_connections[i].CallbackThread != null) { }
-                        else if (_connections[i].connected() &&
+                        else if (_connections[i].Connected() &&
                             (_connections[i].LastVerifyTime.AddMilliseconds(_mVerifyConnectionInterval) > DateTime.UtcNow ||
-                             _connections[i].verifyConnected()))
+                             _connections[i].VerifyConnected()))
                         {
                             moreWork = moreWork || ProcessConnection(_connections[i]);
                         }
@@ -338,7 +339,7 @@ namespace tcpServer
                         {
                             foreach (TcpServerConnection conn in _connections)
                             {
-                                if (conn.hasMoreWork())
+                                if (conn.HasMoreWork())
                                 {
                                     moreWork = true;
                                     break;
@@ -367,7 +368,7 @@ namespace tcpServer
         private bool ProcessConnection(TcpServerConnection conn)
         {
             bool moreWork = false;
-            if (conn.processOutgoing(_mMaxSendAttempts))
+            if (conn.ProcessOutgoing(_mMaxSendAttempts))
             {
                 moreWork = true;
             }
@@ -404,13 +405,13 @@ namespace tcpServer
 
                 try
                 {
-                    _listener.Start(5);
+                    _listener.Start();
                 }
                 catch (Exception)
                 {
                     _listener.Stop();
-                    _listener = new TcpListener(IPAddress.Any, _mPort);
-                    _listener.Start(5);
+                    _listener = MakeListener();
+                    _listener.Start();
                 }
 
                 _mIsOpen = true;
@@ -435,7 +436,7 @@ namespace tcpServer
                 _mIsOpen = false;
                 foreach (TcpServerConnection conn in _connections)
                 {
-                    conn.forceDisconnect();
+                    conn.ForceDisconnect();
                 }
                 try
                 {
@@ -482,9 +483,17 @@ namespace tcpServer
         {
             lock (_sem)
             {
+                if (_connections.Count == 0)
+                {
+                    if (OnError != null)
+                    {
+                        OnError(this, new Exception("No connections are established."));
+                    }
+                }
+
                 foreach (TcpServerConnection conn in _connections)
                 {
-                    conn.sendData(data);
+                    conn.SendData(data);
                 }
                 Thread.Yield();
                 if (_waiting)
@@ -493,6 +502,16 @@ namespace tcpServer
                     _waiting = false;
                 }
             }
+        }
+
+        private TcpListener MakeListener()
+        {
+            _listener = new TcpListener(IPAddress.Any, _mPort);
+            //string hostName = Dns.GetHostName();
+            //string myIP = Dns.GetHostByName(hostName).AddressList[0].ToString(); 
+            //IPEndPoint ep = new IPEndPoint(IPAddress.Parse(myIP), _mPort);
+            //_listener = new TcpListener(ep);
+            return _listener;
         }
     }
 }

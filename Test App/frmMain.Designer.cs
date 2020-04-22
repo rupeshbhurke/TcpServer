@@ -48,7 +48,7 @@
             this.txtAttempts = new System.Windows.Forms.TextBox();
             this.lblConnected = new System.Windows.Forms.Label();
             this.label9 = new System.Windows.Forms.Label();
-            this.tcpServer1 = new tcpServer.TcpServer(this.components);
+            this.tcpServer1 = new TcpServer.TcpServer(this.components);
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.label8 = new System.Windows.Forms.Label();
             this.txtValidateInterval = new System.Windows.Forms.TextBox();
@@ -258,8 +258,8 @@
             this.tcpServer1.MaxSendAttempts = 3;
             this.tcpServer1.Port = -1;
             this.tcpServer1.VerifyConnectionInterval = 0;
-            this.tcpServer1.OnConnect += new tcpServer.TcpServerConnectionChanged(this.tcpServer1_OnConnect);
-            this.tcpServer1.OnDataAvailable += new tcpServer.TcpServerConnectionChanged(this.tcpServer1_OnDataAvailable);
+            this.tcpServer1.OnConnect += new TcpServer.TcpServerConnectionChanged(this.tcpServer1_OnConnect);
+            this.tcpServer1.OnDataAvailable += new TcpServer.TcpServerConnectionChanged(this.tcpServer1_OnDataAvailable);
             // 
             // timer1
             // 
@@ -328,7 +328,7 @@
         private System.Windows.Forms.TextBox txtText;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
-        private tcpServer.TcpServer tcpServer1;
+        private TcpServer.TcpServer tcpServer1;
         private System.Windows.Forms.TextBox txtPort;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Button btnChangePort;

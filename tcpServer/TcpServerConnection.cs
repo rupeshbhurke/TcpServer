@@ -19,35 +19,35 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-namespace tcpServer
+namespace TcpServer
 {
-    public class TcpServerConnection
+    public class TcpServerConnection : ISender
     {
-        private TcpClient m_socket;
-        private List<byte[]> messagesToSend;
-        private int attemptCount;
+        private TcpClient _socket;
+        private readonly List<byte[]> _messagesToSend;
+        private int _attemptCount;
 
-        private Thread m_thread = null;
+        private Thread _thread;
 
-        private DateTime m_lastVerifyTime;
+        private DateTime _lastVerifyTime;
 
-        private Encoding m_encoding;
+        private Encoding _encoding;
 
         public TcpServerConnection(TcpClient sock, Encoding encoding)
         {
-            m_socket = sock;
-            messagesToSend = new List<byte[]>();
-            attemptCount = 0;
+            _socket = sock;
+            _messagesToSend = new List<byte[]>();
+            _attemptCount = 0;
 
-            m_lastVerifyTime = DateTime.UtcNow;
-            m_encoding = encoding;
+            _lastVerifyTime = DateTime.UtcNow;
+            _encoding = encoding;
         }
 
-        public bool connected()
+        public bool Connected()
         {
             try
             {
-                return m_socket.Connected;
+                return _socket.Connected;
             }
             catch (Exception)
             {
@@ -55,109 +55,116 @@ namespace tcpServer
             }
         }
 
-        public bool verifyConnected()
+        public bool VerifyConnected()
         {
             //note: `Available` is checked before because it's faster,
             //`Available` is also checked after to prevent a race condition.
-            bool connected = m_socket.Client.Available != 0 || 
-                !m_socket.Client.Poll(1, SelectMode.SelectRead) || 
-                m_socket.Client.Available != 0;
-            m_lastVerifyTime = DateTime.UtcNow;
+            bool connected = _socket.Client.Available != 0 || 
+                !_socket.Client.Poll(1, SelectMode.SelectRead) || 
+                _socket.Client.Available != 0;
+            _lastVerifyTime = DateTime.UtcNow;
             return connected;
         }
 
-        public bool processOutgoing(int maxSendAttempts)
+        public bool ProcessOutgoing(int maxSendAttempts)
         {
-            lock (m_socket)
+            lock (_socket)
             {
-                if (!m_socket.Connected)
+                if (!_socket.Connected)
                 {
-                    messagesToSend.Clear();
+                    _messagesToSend.Clear();
                     return false;
                 }
 
-                if (messagesToSend.Count == 0)
+                if (_messagesToSend.Count == 0)
                 {
                     return false;
                 }
 
-                NetworkStream stream = m_socket.GetStream();
+                NetworkStream stream = _socket.GetStream();
                 try
                 {
-                    stream.Write(messagesToSend[0], 0, messagesToSend[0].Length);
+                    stream.Write(_messagesToSend[0], 0, _messagesToSend[0].Length);
 
-                    lock (messagesToSend)
+                    lock (_messagesToSend)
                     {
-                        messagesToSend.RemoveAt(0);
+                        _messagesToSend.RemoveAt(0);
                     }
-                    attemptCount = 0;
+                    _attemptCount = 0;
                 }
                 catch (System.IO.IOException)
                 {
                     //occurs when there's an error writing to network
-                    attemptCount++;
-                    if (attemptCount >= maxSendAttempts)
+                    _attemptCount++;
+                    if (_attemptCount >= maxSendAttempts)
                     {
                         //TODO log error
 
-                        lock (messagesToSend)
+                        lock (_messagesToSend)
                         {
-                            messagesToSend.RemoveAt(0);
+                            _messagesToSend.RemoveAt(0);
                         }
-                        attemptCount = 0;
+                        _attemptCount = 0;
                     }
                 }
                 catch (ObjectDisposedException)
                 {
                     //occurs when stream is closed
-                    m_socket.Close();
+                    _socket.Close();
                     return false;
                 }
             }
-            return messagesToSend.Count != 0;
-        }
 
-        public void sendData(string data)
-        {
-            byte[] array = m_encoding.GetBytes(data);
-            lock (messagesToSend)
+            lock (_messagesToSend)
             {
-                messagesToSend.Add(array);
+                return _messagesToSend.Count != 0;
             }
         }
 
-        public void forceDisconnect()
+        public void SendData(string data)
         {
-            lock (m_socket)
+            byte[] array = _encoding.GetBytes(data);
+            lock (_messagesToSend)
             {
-                m_socket.Close();
+                _messagesToSend.Add(array);
             }
         }
 
-        public bool hasMoreWork()
+        public void ForceDisconnect()
         {
-            return messagesToSend.Count > 0 || (Socket.Available > 0 && canStartNewThread());
+            lock (_socket)
+            {
+                _socket.Close();
+            }
         }
 
-        private bool canStartNewThread()
+        public bool HasMoreWork()
         {
-            if (m_thread == null)
+            lock (_messagesToSend)
+            {
+                return _messagesToSend.Count > 0 || (Socket.Available > 0 && CanStartNewThread());
+            }
+        }
+
+        private bool CanStartNewThread()
+        {
+            if (_thread == null)
             {
                 return true;
             }
-            return (m_thread.ThreadState & (ThreadState.Aborted | ThreadState.Stopped)) != 0 &&
-                   (m_thread.ThreadState & ThreadState.Unstarted) == 0;
+            return (_thread.ThreadState & (ThreadState.Aborted | ThreadState.Stopped)) != 0 &&
+                   (_thread.ThreadState & ThreadState.Unstarted) == 0;
         }
 
         public TcpClient Socket
         {
             get
             {
-                return m_socket;
+                return _socket;
             }
             set
             {
-                m_socket = value;
+                _socket = value;
             }
         }
 
@@ -165,15 +172,15 @@ namespace tcpServer
         {
             get
             {
-                return m_thread;
+                return _thread;
             }
             set
             {
-                if (!canStartNewThread())
+                if (!CanStartNewThread())
                 {
                     throw new Exception("Cannot override TcpServerConnection Callback Thread. The old thread is still running.");
                 }
-                m_thread = value;
+                _thread = value;
             }
         }
 
@@ -181,7 +188,7 @@ namespace tcpServer
         {
             get
             {
-                return m_lastVerifyTime;
+                return _lastVerifyTime;
             }
         }
 
@@ -189,12 +196,17 @@ namespace tcpServer
         {
             get
             {
-                return m_encoding;
+                return _encoding;
             }
             set
             {
-                m_encoding = value;
+                _encoding = value;
             }
+        }
+
+        public void Send(string data)
+        {
+            SendData(data);
         }
     }
 }

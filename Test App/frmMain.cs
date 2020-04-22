@@ -123,7 +123,7 @@ namespace testerApp
             timer1.Enabled = true;
         }
 
-        private void tcpServer1_OnDataAvailable(tcpServer.TcpServerConnection connection)
+        private void tcpServer1_OnDataAvailable(TcpServer.TcpServerConnection connection)
         {
             byte[] data = readStream(connection.Socket);
 
@@ -168,7 +168,7 @@ namespace testerApp
             return null;
         }
 
-        private void tcpServer1_OnConnect(tcpServer.TcpServerConnection connection)
+        private void tcpServer1_OnConnect(TcpServer.TcpServerConnection connection)
         {
             invokeDelegate setText = () => lblConnected.Text = tcpServer1.Connections.Count.ToString();
 

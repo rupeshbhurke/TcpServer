@@ -1,4 +1,4 @@
-﻿namespace tcpServer
+﻿namespace TcpServer
 {
     partial class TcpServer
     {

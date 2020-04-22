@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
+using testApp;
 
 namespace testerApp
 {
@@ -15,7 +16,8 @@ namespace testerApp
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new frmMain());
+            //Application.Run(new frmMain());
+            Application.Run(new ServerBoardForm());
         }
     }
 }
